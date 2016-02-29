@@ -422,4 +422,10 @@ As we can see, though the expected value is similar, the probability of losing $
 
 Read [this wikipedia page](https://en.wikipedia.org/wiki/Financial_crisis_of_2007%E2%80%9308) about the financial crisis. Write a paragraph describing how what you learned in this homework can help explain the conditions that led to the crisis.
 
-There is a combinationn of reasons that lead to the crisis in 2007-2008.  
+There is a combinationn of reasons that lead to the crisis in 2007-2008. 
+First, financial institutions increase the number of loans to avoid having a loss without increasing interest rate while reliable borrowers are limited so it is risky to give out loans to so many borrowers. This condition--subprime lending--largely contributes to the financial crisis.
+Besides, financial institutions may overestimates the probability of foreclosure as at that time  , it may be more people default while they still use the historical data to calculate the interest rate. Also violation of the assumption that the probability of default was independent cause severe underestimation of risk as we can see in problem 3D. If the probabilities of default are indeed associated, the risk of losing money will largely increases.
+There are many other complicated reasons that contribute to the crisis like the housing bubble growth and commodities boom.
+In conclusion, the crisis was caused by failures in financial regulation:an explosive mix of excessive borrowing and risk by households and Wall Street as well as lacking a full understanding of the financial system.
+
+
