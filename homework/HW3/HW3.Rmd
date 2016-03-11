@@ -23,7 +23,7 @@ that will simplify the analysis. Ultimately, we want a table of results
 with each poll represented by a row and including results for each 
 candidate as well as information about the poll such as name and date.
 
-#  Problem 1A
+##  Problem 1A
 
 Install and load the `pollstR` package. This package provides functions 
 to access data in the Huffington Post's database. Read the help file 
@@ -35,11 +35,12 @@ to select the right `topic` and make sure to change the `max_pages` argument.
 
 
 ```{r, echo=FALSE, cache=TRUE, warning=FALSE, message=FALSE}
-##Your code here
+library(pollstR)
+race2016<-pollstr_polls(topic="2016-president-gop-primary",max_pages = Inf)
 
 ```
 
-# Problem 1B
+## Problem 1B
 
 Examine and familiarize yourself with the `race2016` object. Note 
 that the `questions` component has a table with election results. 
@@ -50,7 +51,12 @@ a new object called `results` with the table of results and
 use `dplyr`. How many rows are we left with?
 
 ```{r}
-##Your code here
+library(dplyr)
+results<-tbl_df(race2016$questions)
+results<-filter(results,topic=="2016-president-gop-primary"&state!="US")
+results%>%summarize(n())
+results<-unique(results)
+results%>%summarize(n())
 
 ```
 
@@ -63,7 +69,8 @@ did we actually have?
 Hint: look at the `id` column and use the `group_by` command.
 
 ```{r}
-##Your code here
+
+results%>%group_by(id)#%>%nrow
 
 ```
 
@@ -75,7 +82,8 @@ What date was this poll conducted?
 Hint: Use the `polls` component of the `race2016` object to find the date.
 
 ```{r}
-##Your code here
+polls<-tbl_df(race2016$polls)
+polls%>%select(start_date,end_date)
 
 ```
 
@@ -88,8 +96,8 @@ dropped out. We also have entries such as `No one`, `No One` and
 `No Preference`. Filter the `results` table to include only Rubio and Trump. 
 
 ```{r}
-##Your code here
-
+results<-filter(results,choice%in%c("Trump","Rubio"))
+table(results$choice)
 ```
 
 ## Problem 1F
@@ -102,8 +110,11 @@ difference between Trump and Rubio. Hint: Remove the `first_name` and
 
 
 ```{r}
-##Your code here
-
+library(tidyr)
+results<-select(results,-first_name,-last_name)
+results<-results%>%spread(key=choice,value=value)
+results<-results%>%mutate(Trump=as.numeric(Trump)/100,Rubio=as.numeric(Rubio)/100)
+results<-results%>%mutate(diff=Trump-Rubio)
 ```
 
 ## Problem 1G 
@@ -115,7 +126,8 @@ You can select the relevant columns then use the `id` column to join the
 tables. One of the `join` functions in `tidyr` will do the trick.
 
 ```{r}
-##Your code here
+polls<-select(polls,id:method)
+results<-left_join(results,polls,by="id")
 
 ```
 
@@ -130,8 +142,10 @@ house to the `results` table. Rename the column `house`.
 Hint: `race2016$survey_house` has the information you need.
 
 ```{r}
-##Your code here
-
+houses<-race2016$survey_houses
+houses<-houses%>%select(name,id)
+names(houses)<-c("house","id")
+results<-left_join(results,houses,by="id")
 ```
 
 
@@ -151,7 +165,9 @@ Use a join function to add this information to our `results` table.
 
 
 ```{r}
-##Your code here
+actual<-data.frame(state=c("IA","NH","NV","SC"),aTrump=c(0.24,0.35,0.46,0.33),aRubio=c(0.23,0.11,0.24,0.22))
+actual<-mutate(actual,adiff=aTrump-aRubio)
+results<-left_join(results,actual,by="state")
 
 ```
 
@@ -164,7 +180,15 @@ Hint: Use the `group_by`, `mutate`, `filter` and `ungroup` functions in
 `dplyr` for the filtering step.
 
 ```{r}
-##Your code here
+library(ggplot2)
+results%>%
+  filter(state=="IA")%>%
+  group_by(house)%>%
+  mutate(num_polls=n())%>%
+  filter(num_polls>4)%>%
+  ungroup%>%
+  ggplot(aes(house,Trump,fill=house),)+geom_boxplot()+geom_hline(aes(yintercept=actual$aTrump[1]))
+  
 
 ```
 
@@ -180,9 +204,19 @@ For the prediction you have several observations. Pick the smallest
 one. Which is larger, the observed or the theoretical?
 
 ```{r}
-##Your code here
+results%>%
+  filter(state=="IA",is.na(Trump)==FALSE)%>%
+  group_by(house)%>%
+  mutate(num_polls=n())%>%
+  filter(num_polls>4)%>%
+  summarise(min_n=min(observations),sd_sam=sd(Trump),sd_the=sqrt(mean(Trump)*(1-mean(Trump)))/ sqrt(min_n))
+
+
+
 
 ```
+The observed standard deviation is larger.
+
 
 ## Problem 2D
 
@@ -192,9 +226,16 @@ Repeat this for each of the four states. Use color to denote pollster house.
 Using this plot, explain why the theory does not match the observed results?
 
 ```{r}
-##Your code here
+results%>%
+  filter(state%in%c("IA","NH","NV","SC"),is.na(Trump)==FALSE)%>%
+  group_by(house)%>%
+  mutate(num_polls=n())%>%
+  filter(num_polls>4)%>%
+  ggplot(aes(end_date,Trump))+ geom_smooth(span=0.5)+geom_point(aes(color=house)) +facet_wrap(~state)
 
 ```
+
+We can clearly see from these plot that there exists a time effect and sigma does not match what the the statistical theory says it should be. The "Trump" keeps increasing as the end date is closer to the result night. So the observed standard deviation is larger.
 
 ## Problem 2E 
 
@@ -204,9 +245,32 @@ Use exploratory data analysis to get an idea of how time and pollster
 impacts accuracy.
 
 ```{r}
-##Your code here
+results_error<-results%>%
+   filter(state%in%c("IA","NH","NV","SC"),is.na(diff)==FALSE)%>%
+   mutate(error=diff-adiff)
+#error<-results_error$error
+#end_date<-results_error$end_date
+#hist(error)
+#plot(end_date,error)
+#abline(h=mean(error))
+results_error%>%
+  ggplot(aes(error))+geom_histogram(bins=40)+geom_vline(aes(xintercept = mean(error), color = "red"))
+results_error%>%
+  ggplot(aes(end_date,error))+ geom_smooth(span=0.5)+geom_point()
+results_error%>%
+  group_by(house)%>%
+  filter(n()>4)%>%
+  ggplot(aes(house,error,fill=house),)+geom_boxplot()
+
+
+  
 
 ```
+
+From the histogram, we can find that the error is not really normally distributed and is skewed. 
+From the scatterplot, we can find that the error is increasing as the final date approaches. More and more point tend to have positive error as time goes.
+From the boxplot, we can find that errors in different survey houses are quite different, both in the mean value and the standard deviation.
+Clearly, time and pollster impact the accuracy.
 
 
 ## Problem 2F
@@ -219,7 +283,18 @@ Compare the following two approaches:
 and (2) the approach that estimates variance empirically. 
 
 ```{r}
-##Your code here
+#IA:Jan 25-Feb 1 NH:Feb 2-Feb 9 SC:Feb 13-Feb 20
+results_date<-results%>%
+  filter(!is.na(diff))%>%
+  filter((state=="IA"&start_date>=as.Date("2016-01-25"))|(state=="NH"&start_date>=as.Date("2016-02-02"))|(state=="SC"&start_date>=as.Date("2016-02-13")))
+
+#provide ci
+ci_p<-results_date%>%
+  summarize(theta_hat=mean(diff),
+            sigma_hat=sd(diff),
+            tot_poll=n())
+ci_p
+ci_p$theta_hat+c(-1,1)*(ci_p$sigma_hat/sqrt(ci_p$tot_poll))*qnorm(0.975)
 
 ```
 
@@ -236,16 +311,18 @@ $$
 \theta \sim N( \mu, \tau)
 $$
 
-# Problem 3A
+## Problem 3A
 
 Under my prior belief, what is the chance that Trump would beat Rubio in Florida.
 
 ```{r}
-##Your code here
+mu_prior=-20/100
+tau_prior=10
+1-pnorm(0,mu_prior,tau_prior)
 
 ```
 
-# Problem 3B
+## Problem 3B
 
 Consider the latest 25 Florida polls. Assume the poll results for the 
 difference are normal distributed with mean $\theta$ and standard 
@@ -253,7 +330,12 @@ deviation $\sigma$. Provide an estimate for $\theta$ and an estimate
 of the standard deviation $\sigma$.
 
 ```{r}
-##Your code here
+results_fl<-results%>%
+  filter(state=="FL")%>%
+  arrange(desc(end_date))
+results_fl%>%
+  filter(end_date>="2015-09-13")%>%
+  summarize(theta_hat=mean(diff),sigma_hat=sd(diff))
 
 ```
 
@@ -262,7 +344,10 @@ $$ \hat{\theta} \sim N( \theta, \sigma/ \sqrt{25})$$
 Now use the Central Limit Theorem to construct a confidence interval. 
 
 ```{r}
-##Your code here
+ci_parameter<-results_fl%>%
+  filter(end_date>="2015-09-13")%>%
+  summarize(theta_hat=mean(diff),sigma_hat=sd(diff),tot_poll=n())
+ci_parameter$theta_hat+c(-1,1)*(ci_parameter$sigma_hat/sqrt(ci_parameter$tot_poll))*qnorm(0.975)
 
 ```
 
@@ -272,7 +357,12 @@ Combine these two results to provide the mean and standard deviation of
 a posterior distribution for $\theta$. 
 
 ```{r}
-##Your code here
+N <- ci_parameter$tot_poll
+B <- (1/tau_prior^2) / (N / ci_parameter$sigma_hat^2 + 1/tau_prior^2)
+sd_post <- sqrt( (1 / tau_prior^2 + N / ci_parameter$sigma_hat^2)^(-1) )
+mu_post <- mu_prior * B + ci_parameter$theta_hat * (1-B)
+mu_post
+sd_post
 
 ```
 
@@ -282,7 +372,7 @@ Use the result form Problem 3C to provide your estimate of
 Trump beating Rubio in Florida.
 
 ```{r}
-##Your code here
+1-pnorm(0,mu_post,sd_post)
 
 ```
 
@@ -294,4 +384,327 @@ Use the poll data as well as the results from Super Tuesday (March 1st) and othe
 It will help to learn about how delegates are assigned. Here is [the manual].(http://www.scribd.com/doc/294928557/2016-Presidential-Nominating-Process-Book-version-2-0-Dec-2015-pdf)
 
 
+Before deadline, there are many states that already have results.Basically, Trump won 458 delegates and Cruz won 359 delegates. So our prediction will focus on these two candidates.
 
+```{r}
+#load poll results 
+library(dplyr)
+results<-tbl_df(race2016$questions)
+results<-filter(results,topic=="2016-president-gop-primary"&state!="US")
+results<-unique(results)
+
+
+#load poll date
+polls<-tbl_df(race2016$polls)
+
+#focus on Trump and Cruz
+results<-filter(results,choice%in%c("Trump","Cruz"))
+table(results$choice)
+
+#clean data
+library(tidyr)
+results<-select(results,-first_name,-last_name,-question,-topic,-chart,-incumbent,-party)
+results<-results%>%spread(key=choice,value=value)
+results<-results%>%filter(!is.na(Trump)&!is.na(Cruz))
+results<-results%>%mutate(Trump=as.numeric(Trump)/100,Cruz=as.numeric(Cruz)/100)
+results<-results%>%mutate(diff=Trump-Cruz)
+
+#add polls
+polls<-select(polls,id:method)
+results<-left_join(results,polls,by="id")
+
+```
+
+First, we should check the poll results.
+
+```{r}
+length(unique(results$state))
+```
+
+
+We only have polls results from 30 states so we will make predictions on the remaining states.
+
+```{r}
+unique<-unique(results$state)
+previous<-c("IA","NH","SC","NV","AL","AK","AR","GA","MA","MO","OK","TN","TX","VT","VA","KS","KY","LA","ME","HI","ID","MI","MS")
+results<-results%>%filter(!(state%in%previous))
+length(unique(results$state))
+pstates<-unique(results$state)
+```
+
+So we only have 12 states to make predictions.We assign delegates to these states
+
+```{r}
+pdelegates<-c(58,172,99,69,72,51,95,66,71,40,42,34)
+library(dplyr)
+delegate<-data.frame(state=pstates,delegate=pdelegates)
+```
+
+We assume that in all states the distribution of $\theta$
+is normal with mean $\mu = 0$ and standard deviation
+$\tau = 10$
+
+```{r}
+mu_prior=0
+tau_prior=10
+1-pnorm(0,mu_prior,tau_prior)
+
+```
+
+Then we explore the data to estimate $\theta$ and $\tau$
+
+```{r}
+results%>%
+  group_by(state)%>%
+  summarize(num_poll=n())
+```
+
+For FL, NC, OH and PA, there are more poll results.For other states, there are very few poll results.We mainly focus on these four states.
+
+1.FL
+
+```{r}
+tabEst<-results%>%
+  filter(state=="FL")%>%
+  summarize(theta_hat=mean(diff),sigma_hat=sd(diff),tot_poll=n())
+tabEst
+```
+
+Here, we ignore the time effect and house effect. We assume that these effects will not affect the results largely.
+
+However, we could also use election results and poll results in those states that already have results to evalute the time effect and house effect. Here we choose to ignore them.
+
+```{r}
+N <- tabEst$tot_poll
+B <- (1/tau_prior^2) / (N / tabEst$sigma_hat^2 + 1/tau_prior^2)
+sd_post <- sqrt( (1 / tau_prior^2 + N / tabEst$sigma_hat^2)^(-1) )
+mu_post <- mu_prior * B + tabEst$theta_hat * (1-B)
+```
+
+So in FL, the probability of Trump beating Cruz is 
+
+```{r}
+1 - pnorm(0, mu_post, sd_post)
+```
+
+We can confirm it by Monte Carlo simulation.
+
+```{r}
+N = 100
+set.seed(1234)
+qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
+      xlab = "difference between Obama and McCain in FL")
+
+mean(rnorm(N,mu_post,sd_post)>0)
+
+N = 100 
+B = 1e4
+result <- replicate(B, {
+    X <- mean(rnorm(N,mu_post,sd_post) > 0)
+})
+qplot(result, geom = "histogram", bins = 20, 
+      xlab = "Probability that Obama beats McCain in FL") + 
+    geom_vline(aes(xintercept = mean(result), color = "red")) + 
+    geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
+
+```
+
+So Trump is more likely to win in FL.
+
+2.NC
+
+```{r}
+tabEst<-results%>%
+  filter(state=="NC")%>%
+  summarize(theta_hat=mean(diff),sigma_hat=sd(diff),tot_poll=n())
+tabEst
+```
+
+
+
+```{r}
+N <- tabEst$tot_poll
+B <- (1/tau_prior^2) / (N / tabEst$sigma_hat^2 + 1/tau_prior^2)
+sd_post <- sqrt( (1 / tau_prior^2 + N / tabEst$sigma_hat^2)^(-1) )
+mu_post <- mu_prior * B + tabEst$theta_hat * (1-B)
+```
+
+So in NC, the probability of Trump beating Cruz is 
+
+```{r}
+1 - pnorm(0, mu_post, sd_post)
+```
+
+We can confirm it by Monte Carlo simulation.
+
+```{r}
+N = 100
+set.seed(123)
+qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
+      xlab = "difference between Obama and McCain in NC")
+
+mean(rnorm(N,mu_post,sd_post)>0)
+
+N = 100 
+B = 1e4
+result <- replicate(B, {
+    X <- mean(rnorm(N,mu_post,sd_post) > 0)
+})
+qplot(result, geom = "histogram", bins = 20, 
+      xlab = "Probability that Obama beats McCain in NC") + 
+    geom_vline(aes(xintercept = mean(result), color = "red")) + 
+    geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
+
+```
+
+So Trump is more likely to win in NC.
+
+3.OH
+
+```{r}
+tabEst<-results%>%
+  filter(state=="OH")%>%
+  summarize(theta_hat=mean(diff),sigma_hat=sd(diff),tot_poll=n())
+tabEst
+```
+
+
+
+```{r}
+N <- tabEst$tot_poll
+B <- (1/tau_prior^2) / (N / tabEst$sigma_hat^2 + 1/tau_prior^2)
+sd_post <- sqrt( (1 / tau_prior^2 + N / tabEst$sigma_hat^2)^(-1) )
+mu_post <- mu_prior * B + tabEst$theta_hat * (1-B)
+```
+
+So in OH, the probability of Trump beating Cruz is 
+
+```{r}
+1 - pnorm(0, mu_post, sd_post)
+```
+
+We can confirm it by Monte Carlo simulation.
+
+```{r}
+N = 100
+set.seed(12)
+qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
+      xlab = "difference between Obama and McCain in NC")
+
+mean(rnorm(N,mu_post,sd_post)>0)
+
+N = 100 
+B = 1e4
+result <- replicate(B, {
+    X <- mean(rnorm(N,mu_post,sd_post) > 0)
+})
+qplot(result, geom = "histogram", bins = 20, 
+      xlab = "Probability that Obama beats McCain in NC") + 
+    geom_vline(aes(xintercept = mean(result), color = "red")) + 
+    geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
+
+```
+
+So Trump is more likely to win in OH.
+
+4.PA
+
+```{r}
+tabEst<-results%>%
+  filter(state=="PA")%>%
+  summarize(theta_hat=mean(diff),sigma_hat=sd(diff),tot_poll=n())
+tabEst
+```
+
+
+
+```{r}
+N <- tabEst$tot_poll
+B <- (1/tau_prior^2) / (N / tabEst$sigma_hat^2 + 1/tau_prior^2)
+sd_post <- sqrt( (1 / tau_prior^2 + N / tabEst$sigma_hat^2)^(-1) )
+mu_post <- mu_prior * B + tabEst$theta_hat * (1-B)
+```
+
+So in PA, the probability of Trump beating Cruz is 
+
+```{r}
+1 - pnorm(0, mu_post, sd_post)
+```
+
+We can confirm it by Monte Carlo simulation.
+
+```{r}
+N = 100
+set.seed(1)
+qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
+      xlab = "difference between Obama and McCain in NC")
+
+mean(rnorm(N,mu_post,sd_post)>0)
+
+N = 100 
+B = 1e4
+result <- replicate(B, {
+    X <- mean(rnorm(N,mu_post,sd_post) > 0)
+})
+qplot(result, geom = "histogram", bins = 20, 
+      xlab = "Probability that Obama beats McCain in NC") + 
+    geom_vline(aes(xintercept = mean(result), color = "red")) + 
+    geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
+
+```
+
+5.All(including all 12 states just for idea)
+
+```{r}
+tabEst<-results%>%
+  summarize(theta_hat=mean(diff),sigma_hat=sd(diff),tot_poll=n())
+tabEst
+```
+
+
+
+```{r}
+N <- tabEst$tot_poll
+B <- (1/tau_prior^2) / (N / tabEst$sigma_hat^2 + 1/tau_prior^2)
+sd_post <- sqrt( (1 / tau_prior^2 + N / tabEst$sigma_hat^2)^(-1) )
+mu_post <- mu_prior * B + tabEst$theta_hat * (1-B)
+```
+
+The probability of Trump beating Cruz is 
+
+```{r}
+1 - pnorm(0, mu_post, sd_post)
+```
+
+We can confirm it by Monte Carlo simulation.
+
+```{r}
+N = 100
+set.seed(2)
+qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
+      xlab = "difference between Obama and McCain in NC")
+
+mean(rnorm(N,mu_post,sd_post)>0)
+
+N = 100 
+B = 1e4
+result <- replicate(B, {
+    X <- mean(rnorm(N,mu_post,sd_post) > 0)
+})
+qplot(result, geom = "histogram", bins = 20, 
+      xlab = "Probability that Obama beats McCain in NC") + 
+    geom_vline(aes(xintercept = mean(result), color = "red")) + 
+    geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
+
+```
+
+Let's see the delegate assignment again.
+
+```{r}
+delegate
+```
+
+For these four states, the # of delegates are respectively 99, 72, 66, 71, which is quite high.
+
+In conclusion, based on the poll results and election results happened before today, we have reason to believe that Trump has a relatively larger probability to win
+the republican nomination.
