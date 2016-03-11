@@ -26,45 +26,112 @@ you realize that the chance of red or black are both slightly less than 1/2. The
 Let's make a quick sampling model for this simple version of roulette. You are going to bet a dollar each time you play and always bet on black. Make a box model for this process using the `sample` function. Write a function `get_outcome` that takes as an argument the number of times you play $N$ and returns your earnings $S_N$.
 
 ```{r}
-##Your code here
+get_outcome<-function(n){
+  x<-sample(c(-1,1),n,replace=TRUE,prob=c(10/19,9/19))
+  sum(x)
+}
+
 ```
 
 ## Problem 1B
 
 Use Monte Carlo simulation to study the distribution of total earnings $S_N$ for $N=10,25,100,1000$. That is, study the distribution of earnings for different number of plays. What are the distributions of these two random variables? How do the expected values and standard errors change with $N$? Then do the same thing for the average winnings $S_N/N$. What result that you learned in class predicts this?
-
+First, we study the distribution of total earnings $S_N$.
 ```{r}
-##Your code here
+N<-c(10,25,100,1000)
+par(mfrow=c(2,2))
+means<-{}
+stds<-{}
+for(i in N){
+  B<-10000
+  tab<-replicate(B,{
+    get_outcome(i)
+  })
+  hist(tab, main=paste("N=",i),xlab="outcome")
+  means<-c(means,mean(tab))
+  stds<-c(stds,sd(tab))
+}
+means
+stds
+
 ```
 
-Your answer here.
+It seems that the expected value of $S_N$ decreases as $N$ increases and the standard errors of $S_N$ increases as $N$ increases.\
+Then we study the distribution of the average earning $S_N/N$
+```{r}
+par(mfrow=c(2,2))
+meansn<-{}
+stdsn<-{}
+for(i in N){
+  B<-10000
+  tabsn<-replicate(B,{
+    get_outcome(i)/i
+  })
+  hist(tabsn, main=paste("N=",i),xlab="outcome")
+  meansn<-c(meansn,mean(tabsn))
+  stdsn<-c(stdsn,sd(tabsn))
+}
+meansn
+stdsn
 
+```
+It seems that the expected value of $S_N/N$ remains the same as $N$ increases and the standard errors of $S_N/N$ decreases as $N$ increases.\
+Law of Large Numbers predicts this.
 
 ## Problem 1C
 
 What is the expected value of our sampling model? What is the standard deviation of our sampling model?
 
-Your answer here.
+The expected value of our sampling model is 
+$$1\times \frac{9}{19}+(-1) \times \frac{10}{19}=-0.0526$$
+The standard deviation of our sampling model is 
+$$2\times \sqrt{\frac{9}{19}\frac{10}{19}}=1.00$$
 
 ## Problem 1D
 
 Use CLT to approximate the probability that the casino loses money when you play 25 times. Then use a Monte Carlo simulation to confirm.
 
+First use CLT to approximate the probability.
 ```{r}
-##Your code here
+N<-25
+mu<--1/19
+sigma<-2*sqrt(9/19*10/19)
+1-pnorm((0-mu)/(sigma/sqrt(N)))
 ```
 
+Then we use a Monte Carlo simulation to confirm.
 
+```{r}
+tab25<-replicate(B,{
+    get_outcome(25)
+  })
+mean25<-mean(tab25)
+std25<-sd(tab25)
+1-pnorm((0-mean25)/std25)
+
+```
+
+We get very similar results at around 0.4.
 
 ## Problem 1E
 
 In general, what is the probability that the casino loses money as a function of $N$? Make a plot for values ranging from 25 to 1,000. Why does the casino give you free drinks if you keep playing?
 
+The probability that the casino losed money is 
+$$1-\Phi(-\sqrt{N}\frac{\mu}{\sigma})$$
+
 ```{r}
-##Your code here
+par(mfrow=c(1,1))
+Ns<-seq(from=25,to=1000,by=1)
+ps<-{}
+for(i in Ns){
+  p=1-pnorm((0-mu)/(sigma/sqrt(i)))
+  ps<-c(ps,p)
+}
+plot(Ns,ps,xlab="N",ylab="Probability of losing money",main="Probability of losing money with N")
 ```
 
-Your answer here. 
+Clearly, as n increases, the probability that the casino loses money decreases a lot. So the casino give us free drinks if we keep playing.
 
 # Problem 2 
 
@@ -75,24 +142,53 @@ You run a bank that has a history of identifying potential homeowners that can b
 Your bank gives out 1,000 loans this year. Create a sampling model and use the function `sample` to simulate the number of foreclosure in a year with the information that 2% of customers default. Also suppose your bank loses $120,000 on each foreclosure. Run the simulation for one year and report your loss.
 
 ```{r}
-##your code here
+
+get_money<-function(n){
+  x<-sample(c(0,1),n,replace=TRUE,prob=c(0.98,0.02))
+  sum(x)
+}
+set.seed(1)
+loss_in_one_year<--120000*get_money(1000)
+loss_in_one_year
 ```
+As we can see, the loss is around $2760000.
 
 ## Problem 2B
 
 Note that the loss you will incur is a random variable. Use Monte Carlo simulation to estimate the distribution of this random variable. Use summaries and visualization to describe your potential losses to your board of trustees.
 
 ```{r}
-##your code here
+set.seed(2)
+tabmon<-replicate(B,{
+    get_money(1000)*(-120000)
+  })
+hist(tabmon,main="Potential losses",xlab="Losses in dollars")
+summary(tabmon)
+sd(tabmon)
 ```
+The average potential losses is about $2402000. And the distribution of potential losses is approximately normal.
 
 ## Problem 2C
 
 The 1,000 loans you gave out were for $180,000. The way your bank can give out loans and not lose money is by charging an interest rate. If you charge an interest rate of, say, 2% you would earn $3,600 for each loan that doesn't foreclose. At what percentage should you set the interest rate so that your expected profit totals $100,000. Hint: Create a sampling model with expected value 100 so that when multiplied by the 1,000 loans you get an expectation of $100,000. Corroborate your answer with a Monte Carlo simulation.
 
-Your solution here. 
+In order to get expected profit totals $100000, 
+$$180000\times rate\times 0.98 -120000\times 0.02=100$$
+$$rate=0.014172$$
+
 ```{r}
-###your code here
+rate<-0.014172
+loan<-180000
+get_moneyrate<-function(n){
+  x<-sample(c(loan*rate,-120000),n,replace=TRUE,prob=c(0.98,0.02))
+  sum(x)
+}
+tabmonrate<-replicate(B,{
+    get_moneyrate(1000)
+  })
+hist(tabmonrate,main="Potential losses with rate=0.014172",xlab = "Losses in dollars")
+summary(tabmonrate)
+sd(tabmonrate)
 ```
 
 
@@ -100,8 +196,19 @@ Your solution here.
 
 In problem 2C, you were able to set a very low interest rate. Your customers will be very happy and you are expected to earn $100,000 in profits. However, that is just an expectation. Our profit is a random variable. If instead of a profit your bank loses money, your bank defaults. Under the conditions of Problem 2C, what is the probability that your profit is less than 0?
 
+First, we use CLT to calculate the probability that our profit is less than 0.
+
 ```{r}
-##your code here
+mu<-100
+sigma<-(loan*rate+120000)*sqrt(0.02*0.98)
+pnorm((0-mu)/(sigma/sqrt(1000)))
+```
+
+Then we use simulation.
+
+```{r}
+x<-as.numeric(tabmonrate<0)
+mean(x)
 ```
 
 ## Problem 2E
@@ -110,24 +217,69 @@ Note that the probability of losing money is quite high. To what value would you
 
 Hint: Use the following short cut. If $p$ fraction of a box are $a$s and $(1-p)$ are $b$s, then the SD of the list is $\mid a-b \mid \sqrt{p(1-p)}$ 
 
-Your solution here.
+First,we use CLT.
 
 ```{r}
-###your code here
+qnorm(0.001)
+
 ```
+$$\frac{(0.02\times 120000-0.98\times 180000\times rate)\times \sqrt(1000)}{(120000+180000\times rate)\sqrt{0.98\times 0.02}}=-3.09023$$
+$$rate=0.023237$$
+$$\mu=(0.98\times 180000\times rate-0.02\times 120000)\times 1000=1698900$$
+
+So we should raise interest rate to 0.023237 and the expected profit is $1698900.
+
+Then we use simulation
+```{r}
+newrate<-0.023237
+loan<-180000
+get_moneynewrate<-function(n){
+  x<-sample(c(loan*newrate,-120000),n,replace=TRUE,prob=c(0.98,0.02))
+  sum(x)
+}
+set.seed(3)
+tabmonnewrate<-replicate(B,{
+    get_moneynewrate(1000)
+  })
+hist(tabmonnewrate,main="Potential losses with rate=0.023237",xlab="Losses in dollars")
+summary(tabmonnewrate)
+sd(tabmonnewrate)
+x<-as.numeric(tabmonnewrate<0)
+mean(x)
+```
+
+The Monte Carlo simulation gives a slightly higher probability probability at around 0.0026.
 
 ## Problem 2F
 
 Note that the Monte Carlo simulation gave a slightly higher probability than 0.001. What is a possible reason for this? 
 Hint: See if the disparity is smaller for larger values of $p$. Also check for probabilities larger than 0.001. Recall we made an assumption when we calculated the interest rate.
 
+The possible reason for this may be the distribution of sample does not strictly follow a normal distribution when p is low and close to 0. So using normal distribution to approximate will cause error. In order to confirm this, we use a larger p. Let p=0.1  
 
+$$\frac{(0.1\times 120000-0.9\times 180000\times rate)\times \sqrt(1000)}{(120000+180000\times rate)\sqrt{0.9\times 0.1}}=-3.09023$$
+$$rate=0.098405$$
+
+Then we use Monte Carlo to confirm this.
 ```{r}
-##your code here
+newrate<-0.098405
+loan<-180000
+get_moneynewrate<-function(n){
+  x<-sample(c(loan*newrate,-120000),n,replace=TRUE,prob=c(0.9,0.1))
+  sum(x)
+}
+set.seed(1)
+tabmonnewrate<-replicate(B,{
+    get_moneynewrate(1000)
+  })
+hist(tabmonnewrate,main="Potential losses with p=0.1",xlab="Losses in dollars")
+summary(tabmonnewrate)
+sd(tabmonnewrate)
+x<-as.numeric(tabmonnewrate<0)
+mean(x)
 ```
 
-
-Your answer here.
+We can find the simulation result is closer to 0.001 compared to the previous one.
 
 ## Problem 3
 
@@ -137,26 +289,63 @@ We were able to set an interest rate of about 2% that guaranteed a very low prob
 
 The pool of borrowers they found had a much higher default rate, estimated to be $p=0.05$. What interest rate would give these companies the same expected profit as your bank (Answer to 2E)? 
 
+First, we calculated the interest rate
+
+$$\mu=(0.95\times 180000\times rate-0.05\times 120000)\times 1000=1698900$$
+$$rate=0.045$$
+So we need to raise the interest rate to 0.045 to give these companies the same expected profit as my bank.
+
 ```{r}
-##your code here
+rate3<-0.045
+loan<-180000
+get_moneyrate3<-function(n){
+  x<-sample(c(loan*rate3,-120000),n,replace=TRUE,prob=c(0.95,0.05))
+  sum(x)
+}
+tabmonrate3<-replicate(B,{
+    get_moneyrate3(1000)
+  })
+summary(tabmonrate3)
 ```
+The simulation result confirms this.
 
 ## Problem 3B 
 
 At the interest rate calculated in 3A what is the probability of negative profits? Use both the normal approximation and then confirm with a Monte Carlo simulation.
 
+Fisrt, we use the normal approximation.
 ```{r}
-##your code here
+mu<-1698.9
+sigma<-(loan*rate3+120000)*sqrt(0.05*0.95)
+pnorm((0-mu)/(sigma/sqrt(1000)))
 ```
+
+Then we confirm with a Monte Carlo simulation.
+
+```{r}
+x<-as.numeric(tabmonrate3<0)
+mean(x)
+```
+We get very similar results at around 0.028
 
 ## Problem 3C 
 
 Note that the probability is much higher now. This is because the standard deviation grew. The companies giving out the loans did not want to raise interest rates much more since it would drive away clients. Instead they used a statistical approach. They increased $N$. How large does $N$ need to be for this probability to be 0.001? Use the central limit approximation and then confirm with a Monte Carlo simulation.
 
-Your answer here.
+We use the central limit approximation first.
+$$\frac{(0.05\times 120000-0.95\times 180000\times 0.045)\times \sqrt(N)}{(120000+180000\times 0.045)\sqrt{0.95\times 0.05}}=-3.09023$$
+$$N=2591$$
+Then we use a Monte Carlo simulation.
+
 ```{r}
-###your code here
+tabmonrate3_N<-replicate(B,{
+    get_moneyrate3(2591)
+  })
+summary(tabmonrate3_N)
+x<-as.numeric(tabmonrate3_N<0)
+mean(x)
 ```
+The probability is around 0.001 now.
 
 So by doubling the number of loans we were able to reduce our risk! Now, for this to work, all the assumptions in our model need to be approximately correct, including the assumption that the probability of default was **independent**. This turned out to be false and the main reason for the under estimation of risk.
 
@@ -202,13 +391,41 @@ sum( outcomes2[1,] < 0 & outcomes2[2,]<0)/sum(outcomes2[1,]<0)
 
 Generate a simulation with correlated outcomes such as those above. This time use the interest rate calculated in 3A. What is the expected earnings under this model compared to the previous? What is the probability of losing $1 million compared to the previous? What is the probability of losing $10 million compared to the previous?
 
-
+To compare to the previous, we calculate the expected earnings, probability of losing $1 million and probability of losing $10 million in the previous model. 
 
 ```{r}
-###your code here
+interest_rateold<-0.045
+outcomes1 <- replicate(B,{
+  sum(sample( c(-loss_per_foreclosure, interest_rateold*loan ), 2591, replace=TRUE, prob=c(p2, 1-p2)))
+})
+summary(outcomes1)
+mean(as.numeric(outcomes1<(-1000000)))
+mean(as.numeric(outcomes1<(-10000000)))
 ```
+The expected earning under this model is around $440000. The probability of losing $1 million is 0.0001 and the probability of losing $10 million is 0.
 
+Then we calculate the expected earnings, probability of losing $1 million and probability of losing $10 million in the new model.
+```{r}
+outcomes2 <- replicate(B,{
+  add <- sample( c(-0.04,0.04), 1)
+  sum(sample( c(-loss_per_foreclosure, interest_rateold*loan ), 2591, replace=TRUE, prob=c(p2+add, 1-(p2+add))))
+})
+summary(outcomes2)
+mean(as.numeric(outcomes2<(-1000000)))
+mean(as.numeric(outcomes2<(-10000000)))
+```
+The expected earning under this model is around $440000. The probability of losing $1 million is about 0.5 and the probability of losing $10 million is about 0.14.
+
+As we can see, though the expected value is similar, the probability of losing $1 million and $10 million largely increases.
 
 ## Problem 4
 
 Read [this wikipedia page](https://en.wikipedia.org/wiki/Financial_crisis_of_2007%E2%80%9308) about the financial crisis. Write a paragraph describing how what you learned in this homework can help explain the conditions that led to the crisis.
+
+There is a combinationn of reasons that lead to the crisis in 2007-2008. 
+First, financial institutions increase the number of loans to avoid having a loss without increasing interest rate while reliable borrowers are limited so it is risky to give out loans to so many borrowers. This condition--subprime lending--largely contributes to the financial crisis.
+Besides, financial institutions may overestimates the probability of foreclosure as at that time  , it may be more people default while they still use the historical data to calculate the interest rate. Also violation of the assumption that the probability of default was independent cause severe underestimation of risk as we can see in problem 3D. If the probabilities of default are indeed associated, the risk of losing money will largely increases.
+There are many other complicated reasons that contribute to the crisis like the housing bubble growth and commodities boom.
+In conclusion, the crisis was caused by failures in financial regulation:an explosive mix of excessive borrowing and risk by households and Wall Street as well as lacking a full understanding of the financial system.
+
+
