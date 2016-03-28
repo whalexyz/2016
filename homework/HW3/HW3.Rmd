@@ -493,7 +493,7 @@ We can confirm it by Monte Carlo simulation.
 N = 100
 set.seed(1234)
 qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
-      xlab = "difference between Obama and McCain in FL")
+      xlab = "difference between Trump and Cruz in FL")
 
 mean(rnorm(N,mu_post,sd_post)>0)
 
@@ -503,7 +503,7 @@ result <- replicate(B, {
     X <- mean(rnorm(N,mu_post,sd_post) > 0)
 })
 qplot(result, geom = "histogram", bins = 20, 
-      xlab = "Probability that Obama beats McCain in FL") + 
+      xlab = "Probability that Trump beats Cruz in FL") + 
     geom_vline(aes(xintercept = mean(result), color = "red")) + 
     geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
 
@@ -541,7 +541,7 @@ We can confirm it by Monte Carlo simulation.
 N = 100
 set.seed(123)
 qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
-      xlab = "difference between Obama and McCain in NC")
+      xlab = "difference between Trump and Cruz in NC")
 
 mean(rnorm(N,mu_post,sd_post)>0)
 
@@ -551,7 +551,7 @@ result <- replicate(B, {
     X <- mean(rnorm(N,mu_post,sd_post) > 0)
 })
 qplot(result, geom = "histogram", bins = 20, 
-      xlab = "Probability that Obama beats McCain in NC") + 
+      xlab = "Probability that Trump beats Cruz in NC") + 
     geom_vline(aes(xintercept = mean(result), color = "red")) + 
     geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
 
@@ -589,7 +589,7 @@ We can confirm it by Monte Carlo simulation.
 N = 100
 set.seed(12)
 qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
-      xlab = "difference between Obama and McCain in NC")
+      xlab = "difference between Trump and Cruz in OH")
 
 mean(rnorm(N,mu_post,sd_post)>0)
 
@@ -599,7 +599,7 @@ result <- replicate(B, {
     X <- mean(rnorm(N,mu_post,sd_post) > 0)
 })
 qplot(result, geom = "histogram", bins = 20, 
-      xlab = "Probability that Obama beats McCain in NC") + 
+      xlab = "Probability that Trump beats Cruz in OH") + 
     geom_vline(aes(xintercept = mean(result), color = "red")) + 
     geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
 
@@ -637,7 +637,7 @@ We can confirm it by Monte Carlo simulation.
 N = 100
 set.seed(1)
 qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
-      xlab = "difference between Obama and McCain in NC")
+      xlab = "difference between Trump and Cruz in PA")
 
 mean(rnorm(N,mu_post,sd_post)>0)
 
@@ -647,7 +647,7 @@ result <- replicate(B, {
     X <- mean(rnorm(N,mu_post,sd_post) > 0)
 })
 qplot(result, geom = "histogram", bins = 20, 
-      xlab = "Probability that Obama beats McCain in NC") + 
+      xlab = "Probability that Trump beats Cruz in PA") + 
     geom_vline(aes(xintercept = mean(result), color = "red")) + 
     geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
 
@@ -682,7 +682,7 @@ We can confirm it by Monte Carlo simulation.
 N = 100
 set.seed(2)
 qplot(rnorm(N,mu_post,sd_post), geom = "histogram", bins = 20, 
-      xlab = "difference between Obama and McCain in NC")
+      xlab = "difference between Trump and Cruz")
 
 mean(rnorm(N,mu_post,sd_post)>0)
 
@@ -692,7 +692,7 @@ result <- replicate(B, {
     X <- mean(rnorm(N,mu_post,sd_post) > 0)
 })
 qplot(result, geom = "histogram", bins = 20, 
-      xlab = "Probability that Obama beats McCain in NC") + 
+      xlab = "Probability that Trump beats Cruz") + 
     geom_vline(aes(xintercept = mean(result), color = "red")) + 
     geom_vline(aes(xintercept = 1 - pnorm(0, mu_post, sd_post), color = "blue")) 
 
